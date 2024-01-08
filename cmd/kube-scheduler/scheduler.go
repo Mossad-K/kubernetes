@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/sample"
 	"math/rand"
 	"os"
 	"time"
@@ -32,7 +33,9 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	command := app.NewSchedulerCommand()
+	command := app.NewSchedulerCommand(
+		app.WithPlugin(sample.Name, sample.New),
+	)
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling
 	// utilflag.InitFlags() (by removing its pflag.Parse() call). For now, we have to set the
