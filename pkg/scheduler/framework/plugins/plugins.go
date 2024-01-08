@@ -1,4 +1,4 @@
-package sample
+package plugins
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 // 插件名称
-const Name = "sample"
+const Name = "sample-plugin"
 
 type Args struct {
 	FavoriteColor  string `json:"favorite_color,omitempty"`
