@@ -9,52 +9,31 @@ import (
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 )
 
+// StatelessPreBindExample is an example of a simple plugin that has no state
+// and implements only one hook for prebind.
+type StatelessPreBindExample struct{}
+
+var _ framework.PreBindPlugin = StatelessPreBindExample{}
+
 // 插件名称
 const Name = "sample-plugin"
 
-type Args struct {
-	FavoriteColor  string `json:"favorite_color,omitempty"`
-	FavoriteNumber int    `json:"favorite_number,omitempty"`
-	ThanksTo       string `json:"thanks_to,omitempty"`
-}
-
-type Sample struct {
-	args   *Args
-	handle framework.FrameworkHandle
-}
-
-func (s *Sample) Name() string {
+// Name returns name of the plugin. It is used in logs, etc.
+func (sr StatelessPreBindExample) Name() string {
 	return Name
 }
 
-func (s *Sample) PreFilter(ctx context.Context, pod *v1.Pod) *framework.Status {
-	klog.V(3).Infof("prefilter pod: %v", pod.Name)
-	return framework.NewStatus(framework.Success, "")
-}
-
-func (s *Sample) Filter(ctx context.Context, pod *v1.Pod, nodeName string) *framework.Status {
-	klog.V(3).Infof("filter pod: %v, node: %v", pod.Name, nodeName)
-	return framework.NewStatus(framework.Success, "")
-}
-
-func (s *Sample) PreBind(ctx context.Context, pod *v1.Pod, nodeName string) *framework.Status {
-	if nodeInfo, err := s.handle.SnapshotSharedLister().NodeInfos().Get(nodeName); err != nil {
-		return framework.NewStatus(framework.Error, fmt.Sprintf("prebind get node info error: %+v", nodeName))
-	} else {
-		klog.V(3).Infof("prebind node info: %+v", nodeInfo.Node())
-		return framework.NewStatus(framework.Success, "")
+// PreBind is the functions invoked by the framework at "prebind" extension point.
+func (sr StatelessPreBindExample) PreBind(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
+	if pod == nil {
+		return framework.NewStatus(framework.Error, fmt.Sprintf("pod cannot be nil"))
 	}
+	klog.V(3).Infof("PreBind pod: %v, node: %v", pod.Name, nodeName)
+
+	return nil
 }
 
-// type PluginFactory = func(configuration *runtime.Unknown, f FrameworkHandle) (Plugin, error)
-func New(configuration *runtime.Unknown, f framework.FrameworkHandle) (framework.Plugin, error) {
-	args := &Args{}
-	if err := framework.DecodeInto(configuration, args); err != nil {
-		return nil, err
-	}
-	klog.V(3).Infof("get plugin config args: %+v", args)
-	return &Sample{
-		args:   args,
-		handle: f,
-	}, nil
+// New initializes a new plugin and returns it.
+func New(_ *runtime.Unknown, _ framework.FrameworkHandle) (framework.Plugin, error) {
+	return &StatelessPreBindExample{}, nil
 }
