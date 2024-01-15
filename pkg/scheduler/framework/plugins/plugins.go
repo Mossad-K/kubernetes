@@ -16,7 +16,7 @@ type CommunicatingPlugin struct{}
 var _ framework.PreBindPlugin = CommunicatingPlugin{}
 
 // 插件名称
-const Name = "sample-plugin"
+const Name = "sample-plugin-1"
 
 // Name returns name of the plugin. It is used in logs, etc.
 func (sr CommunicatingPlugin) Name() string {

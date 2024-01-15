@@ -31,7 +31,7 @@ type StatelessPreBindExample struct{}
 var _ framework.PreBindPlugin = StatelessPreBindExample{}
 
 // Name is the name of the plugin used in Registry and configurations.
-const Name = "stateless-prebind-plugin-example"
+const Name = "sample-plugin"
 
 // Name returns name of the plugin. It is used in logs, etc.
 func (sr StatelessPreBindExample) Name() string {
