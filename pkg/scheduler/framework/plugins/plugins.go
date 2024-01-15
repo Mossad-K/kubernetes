@@ -11,20 +11,20 @@ import (
 
 // StatelessPreBindExample is an example of a simple plugin that has no state
 // and implements only one hook for prebind.
-type StatelessPreBindExample struct{}
+type CommunicatingPlugin struct{}
 
-var _ framework.PreBindPlugin = StatelessPreBindExample{}
+var _ framework.PreBindPlugin = CommunicatingPlugin{}
 
 // 插件名称
 const Name = "sample-plugin"
 
 // Name returns name of the plugin. It is used in logs, etc.
-func (sr StatelessPreBindExample) Name() string {
+func (sr CommunicatingPlugin) Name() string {
 	return Name
 }
 
 // PreBind is the functions invoked by the framework at "prebind" extension point.
-func (sr StatelessPreBindExample) PreBind(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
+func (sr CommunicatingPlugin) PreBind(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
 	if pod == nil {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("pod cannot be nil"))
 	}
@@ -35,5 +35,5 @@ func (sr StatelessPreBindExample) PreBind(ctx context.Context, state *framework.
 
 // New initializes a new plugin and returns it.
 func New(_ *runtime.Unknown, _ framework.FrameworkHandle) (framework.Plugin, error) {
-	return &StatelessPreBindExample{}, nil
+	return &CommunicatingPlugin{}, nil
 }

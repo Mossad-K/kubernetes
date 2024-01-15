@@ -17,7 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/examples/prebind"
 	"math/rand"
 	"os"
 	"time"
@@ -34,7 +34,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	command := app.NewSchedulerCommand(
-		app.WithPlugin(plugins.Name, plugins.New),
+		app.WithPlugin(prebind.Name, prebind.New),
 	)
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling

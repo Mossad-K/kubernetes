@@ -43,8 +43,8 @@ func (sr StatelessPreBindExample) PreBind(ctx context.Context, state *framework.
 	if pod == nil {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("pod cannot be nil"))
 	}
-	if pod.Namespace != "foo" {
-		return framework.NewStatus(framework.Unschedulable, "only pods from 'foo' namespace are allowed")
+	if pod.Namespace != "default-framework" {
+		return framework.NewStatus(framework.Unschedulable, "only pods from 'default-framework' namespace are allowed")
 	}
 	return nil
 }
