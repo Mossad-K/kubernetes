@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package multipoint
+package aiplugin
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"net/http"
 	"strings"
@@ -31,42 +32,46 @@ type AiSchedulerPlugin struct {
 	aiClient *http.Client
 	handle   framework.FrameworkHandle
 }
+
 type InstanceInfo struct {
-	env    string
-	app    string
-	appId  string
-	ip     string
-	nodeId []string
+	Env    string   `json:"env"`
+	App    string   `json:"app"`
+	AppId  string   `json:"appId"`
+	Ip     string   `json:"ip"`
+	NodeIp []string `json:"nodeIp"`
 }
 type InstanceAllocationRequest struct {
-	ins_info InstanceInfo
-	env      string
+	Ins_info InstanceInfo `json:"ins_info"`
+	Env      string       `json:"env"`
 }
 
 type NodeScore struct {
-	score int
-	ip    string
+	Score int    `json:"score"`
+	Ip    string `json:"ip"`
 }
 
 type InstanceAllocationData struct {
-	app        string
-	env        string
-	appId      string
-	ip         string
-	nodeScores []NodeScore
+	App        string      `json:"app"`
+	Env        string      `json:"env"`
+	AppId      string      `json:"appId"`
+	Ip         string      `json:"ip"`
+	NodeScores []NodeScore `json:"nodeScores"`
 }
 
 type InstanceAllocationResp struct {
-	code    int
-	message string
-	data    InstanceAllocationData
+	Code    int                    `json:"code"`
+	Message string                 `json:"message"`
+	Data    InstanceAllocationData `json:"data"`
 }
 
-var _ framework.ScorePlugin = AiSchedulerPlugin{}
-var _ framework.PreScorePlugin = AiSchedulerPlugin{}
+var _ framework.ScorePlugin = &AiSchedulerPlugin{}
+var _ framework.PreScorePlugin = &AiSchedulerPlugin{}
 
 // Name is the name of the plugin used in Registry and configurations.
-const Name = "ai-plugin"
+const (
+	Name             = "AiPlugin"
+	preScoreStateKey = "PreScore" + Name
+)
 
 // Name returns name of the plugin. It is used in logs, etc.
 func (mc AiSchedulerPlugin) Name() string {
@@ -74,7 +79,7 @@ func (mc AiSchedulerPlugin) Name() string {
 }
 
 type stateData struct {
-	data string
+	data InstanceAllocationResp
 }
 
 func (s *stateData) Clone() framework.StateData {
@@ -90,29 +95,42 @@ func (as *AiSchedulerPlugin) PreScore(ctx context.Context, cycleState *framework
 		// No nodes to score.
 		return nil
 	}
+
+	podLabels := pod.Labels
+	if podLabels == nil {
+		podLabels = map[string]string{}
+	}
+	//aiScheduler := podLabels["aiScheduler"]
+	//if aiScheduler != "aiScheduler" {
+	//	klog.V(1).Infof("ai PreScore isnot aiScheduler")
+	//	return nil
+	//}
 	var instanceInfo InstanceInfo
-	instanceInfo.app = pod.Labels["app"]
-	instanceInfo.appId = pod.Labels["appid"]
-	instanceInfo.env = pod.Labels["env"]
-	instanceInfo.ip = pod.Labels["ip"]
+	instanceInfo.App = pod.Labels["app"]
+	instanceInfo.AppId = pod.Labels["appid"]
+	instanceInfo.Env = pod.Labels["env"]
+	instanceInfo.Ip = pod.Labels["ip"]
 
 	nodeNames := make([]string, len(nodes))
 	for i, node := range nodes {
 		nodeNames[i] = node.Name
 	}
-	instanceInfo.nodeId = nodeNames
+	instanceInfo.NodeIp = nodeNames
 
 	var instanceAllocationRequest InstanceAllocationRequest
-	instanceAllocationRequest.env = "TEST"
-	instanceAllocationRequest.ins_info = instanceInfo
+	instanceAllocationRequest.Env = "TEST"
+	instanceAllocationRequest.Ins_info = instanceInfo
 	instanceAllocationRequestJson, _ := json.Marshal(instanceAllocationRequest)
 
 	request, err := http.NewRequest("POST", "http://fat-wdkapp.ppdapi.com/instance_allocation_online", strings.NewReader(string(instanceAllocationRequestJson)))
 	if err != nil {
+		klog.V(3).Infof("ai PreScore http.NewRequest: %v", err)
 		return nil
 	}
+	request.Header.Set("Content-Type", "application/json")
 	resp, err := as.aiClient.Do(request)
 	if err != nil {
+		klog.V(3).Infof("ai PreScore as.aiClient.Do wdkapp.ppdapi.com error: %v", err)
 		return nil
 	}
 	defer resp.Body.Close()
@@ -122,12 +140,15 @@ func (as *AiSchedulerPlugin) PreScore(ctx context.Context, cycleState *framework
 	var result InstanceAllocationResp
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
+		klog.V(3).Infof("ai PreScore json.NewDecoder : %v", err)
 		return nil
 	}
-	if result.code != 100000 {
-
+	if result.Code != 100000 {
+		klog.V(3).Infof("ai PreScore as.aiClient.Do result.Code != 100000 : %v", err)
+		return nil
 	}
-	//cycleState.Write(preScoreStateKey, state)
+	klog.V(1).Infof("ai PreScore result : %v", result)
+	cycleState.Write(preScoreStateKey, &stateData{data: result})
 	return nil
 }
 
@@ -142,21 +163,15 @@ func (as *AiSchedulerPlugin) Score(ctx context.Context, state *framework.CycleSt
 		return 0, framework.NewStatus(framework.Error, "node not found")
 	}
 
-	nodeLabels := node.Labels
-	if nodeLabels == nil {
-		nodeLabels = map[string]string{}
+	podLabels := pod.Labels
+	if podLabels == nil {
+		podLabels = map[string]string{}
 	}
 	return int64(0), nil
 }
 
 // ScoreExtensions of the Score plugin.
 func (as *AiSchedulerPlugin) ScoreExtensions() framework.ScoreExtensions {
-	return nil
-}
-
-// Score returns the score of scheduling a pod on a specific node.
-func (as *AiSchedulerPlugin) NormalizeScore(ctx context.Context, cycleState *framework.CycleState, p *v1.Pod, scores framework.NodeScoreList) *framework.Status {
-
 	return nil
 }
 
