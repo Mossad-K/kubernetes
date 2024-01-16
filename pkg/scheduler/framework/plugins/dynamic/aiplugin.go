@@ -69,7 +69,7 @@ var _ framework.PreScorePlugin = &AiSchedulerPlugin{}
 
 // Name is the name of the plugin used in Registry and configurations.
 const (
-	Name             = "AiPlugin"
+	Name             = "sample-plugin"
 	preScoreStateKey = "PreScore" + Name
 )
 
