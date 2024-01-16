@@ -167,7 +167,58 @@ func (as *AiSchedulerPlugin) Score(ctx context.Context, state *framework.CycleSt
 	if podLabels == nil {
 		podLabels = map[string]string{}
 	}
-	return int64(0), nil
+	//aiScheduler := podLabels["aiScheduler"]
+	//if aiScheduler != "aiScheduler" {
+	//	klog.V(1).Infof("ai PreScore isnot aiScheduler")
+	//	return nil
+	//}
+	var instanceInfo InstanceInfo
+	instanceInfo.App = pod.Labels["app"]
+	instanceInfo.AppId = pod.Labels["appid"]
+	instanceInfo.Env = pod.Labels["env"]
+	instanceInfo.Ip = pod.Labels["ip"]
+
+	nodeNames := []string{nodeName}
+	instanceInfo.NodeIp = nodeNames
+
+	var instanceAllocationRequest InstanceAllocationRequest
+	instanceAllocationRequest.Env = "TEST"
+	instanceAllocationRequest.Ins_info = instanceInfo
+	instanceAllocationRequestJson, _ := json.Marshal(instanceAllocationRequest)
+
+	request, err := http.NewRequest("POST", "http://fat-wdkapp.ppdapi.com/instance_allocation_online", strings.NewReader(string(instanceAllocationRequestJson)))
+	if err != nil {
+		klog.V(1).Infof("ai PreScore http.NewRequest: %v", err)
+		return int64(0), nil
+	}
+	request.Header.Set("Content-Type", "application/json")
+	resp, err := as.aiClient.Do(request)
+	if err != nil {
+		klog.V(1).Infof("ai PreScore as.aiClient.Do wdkapp.ppdapi.com error: %v", err)
+		return int64(0), nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		klog.V(1).Infof("ai PreScore lresp.StatusCode != 200 ")
+		return int64(0), nil
+	}
+	var result InstanceAllocationResp
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		klog.V(1).Infof("ai PreScore json.NewDecoder : %v", err)
+		return int64(0), nil
+	}
+	if result.Code != 100000 {
+		klog.V(1).Infof("ai PreScore as.aiClient.Do result.Code != 100000")
+		return int64(0), nil
+	}
+	klog.V(1).Infof("ai PreScore result : %v", result)
+
+	if len(result.Data.NodeScores) <= 0 {
+		klog.V(1).Infof("ai PreScore len(result.Data.NodeScores) <= 0 ")
+		return int64(0), nil
+	}
+	return int64(result.Data.NodeScores[0].Score), nil
 }
 
 // ScoreExtensions of the Score plugin.
