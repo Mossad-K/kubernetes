@@ -65,25 +65,23 @@ type InstanceAllocationResp struct {
 }
 
 // Name is the name of the plugin used in Registry and configurations.
-const (
-	Name = "sample-plugin"
-)
+const Name = "sample-plugin"
 
 // Name returns name of the plugin. It is used in logs, etc.
-func (mc AiSchedulerPlugin) Name() string {
+func (as *AiSchedulerPlugin) Name() string {
 	return Name
 }
 
-type stateData struct {
-	data InstanceAllocationResp
-}
+//type stateData struct {
+//	data InstanceAllocationResp
+//}
 
-func (s *stateData) Clone() framework.StateData {
-	copy := &stateData{
-		data: s.data,
-	}
-	return copy
-}
+//func (s *stateData) Clone() framework.StateData {
+//	copy := &stateData{
+//		data: s.data,
+//	}
+//	return copy
+//}
 
 //
 //// PreScore builds and writes cycle state used by Score and NormalizeScore.
@@ -225,9 +223,9 @@ func (as *AiSchedulerPlugin) ScoreExtensions() framework.ScoreExtensions {
 
 // New initializes a new plugin and returns it.
 func New(_ *runtime.Unknown, f framework.FrameworkHandle) (framework.Plugin, error) {
-	aiClient := http.DefaultClient
+	client := http.DefaultClient
 	return &AiSchedulerPlugin{
-		aiClient: aiClient,
+		aiClient: client,
 		handle:   f,
 	}, nil
 }
