@@ -31,7 +31,6 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	if pod == nil {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("pod cannot be nil"))
 	}
-	klog.V(3).Infof("ai PreScore")
 
 	podLabels := pod.Labels
 	if podLabels == nil {
@@ -47,6 +46,8 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	instanceInfo.AppId = pod.Labels["appid"]
 	instanceInfo.Env = pod.Labels["env"]
 	instanceInfo.Ip = pod.Labels["ip"]
+
+	klog.V(3).Infof("ai PreScore app: %v appId: %v env: %v ip: %v", instanceInfo.App, instanceInfo.AppId, instanceInfo.Env, instanceInfo.Ip)
 
 	nodeNames := make([]string, len(nodes))
 	for i, node := range nodes {
@@ -65,9 +66,9 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	}
 	request.Header.Set("Content-Type", "application/json")
 	client := http.DefaultClient
-	klog.V(3).Infof("ai PreScore query fat-wdkapp.ppdapi.com")
+	klog.V(3).Infof("ai PreScore query fat-wdkapp.ppdapi.com app: %v appId: %v env: %v ip: %v", instanceInfo.App, instanceInfo.AppId, instanceInfo.Env, instanceInfo.Ip)
 	resp, err := client.Do(request)
-	klog.V(3).Infof("ai PreScore query done fat-wdkapp.ppdapi.com")
+	klog.V(3).Infof("ai PreScore query done fat-wdkapp.ppdapi.com app: %v appId: %v env: %v ip: %v", instanceInfo.App, instanceInfo.AppId, instanceInfo.Env, instanceInfo.Ip)
 	if err != nil {
 		klog.V(3).Infof("ai PreScore as.aiClient.Do wdkapp.ppdapi.com error: %v", err)
 		return nil
@@ -99,7 +100,8 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	for _, nodeScore := range result.Data.NodeScores {
 		aiScore[nodeScore.Ip] = int64(nodeScore.Score)
 	}
-	klog.V(3).Infof("ai PreScore cycleState.Write : %v", aiScore)
+	klog.V(3).Infof("ai PreScore app: %v appId: %v env: %v ip: %v cycleState.Write : %v", instanceInfo.App, instanceInfo.AppId, instanceInfo.Env, instanceInfo.Ip, aiScore)
+
 	aiPreScoreState := &AiPreScoreState{
 		aiScore: aiScore,
 	}
@@ -123,12 +125,17 @@ func (cp CommunicatingPlugin) Score(ctx context.Context, cycleState *framework.C
 	//	klog.V(1).Infof("ai PreScore isnot aiScheduler")
 	//	return int64(0), nil
 	//}
+
+	app := pod.Labels["app"]
+	appId := pod.Labels["appid"]
+	env := pod.Labels["env"]
+	ip := pod.Labels["ip"]
 	score, err := getAiPreScoreState(cycleState, nodeName)
 	if err != nil {
 		klog.V(3).Infof("ai Score error : %v", err)
 		return int64(0), nil
 	}
-	klog.V(3).Infof("ai Score: %v", score)
+	klog.V(3).Infof("ai app: %v appId: %v env: %v ip: %v nodeIp: %v Score: %v", app, appId, env, ip, nodeName, score)
 	return score, nil
 }
 
