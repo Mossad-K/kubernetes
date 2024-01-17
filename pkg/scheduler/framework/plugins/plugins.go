@@ -20,6 +20,7 @@ var _ framework.PreScorePlugin = CommunicatingPlugin{}
 
 // 插件名称
 const Name = "sample-plugin"
+const preScoreStateKey = "PreScore" + Name
 
 // Name returns name of the plugin. It is used in logs, etc.
 func (cp CommunicatingPlugin) Name() string {
@@ -30,6 +31,7 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	if pod == nil {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("pod cannot be nil"))
 	}
+	klog.V(3).Infof("ai PreScore")
 
 	podLabels := pod.Labels
 	if podLabels == nil {
@@ -63,8 +65,9 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	}
 	request.Header.Set("Content-Type", "application/json")
 	client := http.DefaultClient
-
+	klog.V(3).Infof("ai PreScore query fat-wdkapp.ppdapi.com")
 	resp, err := client.Do(request)
+	klog.V(3).Infof("ai PreScore query done fat-wdkapp.ppdapi.com")
 	if err != nil {
 		klog.V(3).Infof("ai PreScore as.aiClient.Do wdkapp.ppdapi.com error: %v", err)
 		return nil
@@ -90,98 +93,62 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 		klog.V(3).Infof("ai PreScore len(result.Data.NodeScores) <= 0 ")
 		return nil
 	}
-	return nil
-	//cycleState.Write(preScoreStateKey, state)
+	cycleState.Write(preScoreStateKey, &stateData{data: result})
 	return nil
 }
 
-// PreBind is the functions invoked by the framework at "prebind" extension point.
-//func (sr CommunicatingPlugin) PreBind(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
-//	if pod == nil {
-//		return framework.NewStatus(framework.Error, fmt.Sprintf("pod cannot be nil"))
-//	}
-//	klog.V(3).Infof("PreBind pod: %v, node: %v", pod.Name, nodeName)
-//
-//	return nil
-//}
-
 // Score invoked at the score extension point.
-//func (cp CommunicatingPlugin) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
-//	nodeInfo, err := cp.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)
-//	if err != nil {
-//		return 0, framework.NewStatus(framework.Error, fmt.Sprintf("getting node %q from Snapshot: %v", nodeName, err))
-//	}
-//
-//	node := nodeInfo.Node()
-//	if node == nil {
-//		return 0, framework.NewStatus(framework.Error, "node not found")
-//	}
-//
-//	podLabels := pod.Labels
-//	if podLabels == nil {
-//		podLabels = map[string]string{}
-//	}
-//	//aiScheduler := podLabels["aiScheduler"]
-//	//if aiScheduler != "aiScheduler" {
-//	//	klog.V(1).Infof("ai PreScore isnot aiScheduler")
-//	//	return nil
-//	//}
-//	var instanceInfo InstanceInfo
-//	instanceInfo.App = pod.Labels["app"]
-//	instanceInfo.AppId = pod.Labels["appid"]
-//	instanceInfo.Env = pod.Labels["env"]
-//	instanceInfo.Ip = pod.Labels["ip"]
-//
-//	nodeNames := []string{nodeName}
-//	instanceInfo.NodeIp = nodeNames
-//
-//	var instanceAllocationRequest InstanceAllocationRequest
-//	instanceAllocationRequest.Env = "TEST"
-//	instanceAllocationRequest.Ins_info = instanceInfo
-//	instanceAllocationRequestJson, _ := json.Marshal(instanceAllocationRequest)
-//
-//	request, err := http.NewRequest("POST", "http://fat-wdkapp.ppdapi.com/instance_allocation_online", strings.NewReader(string(instanceAllocationRequestJson)))
-//	if err != nil {
-//		klog.V(3).Infof("ai PreScore http.NewRequest: %v", err)
-//		return int64(0), nil
-//	}
-//	request.Header.Set("Content-Type", "application/json")
-//	client := http.DefaultClient
-//
-//	resp, err := client.Do(request)
-//	if err != nil {
-//		klog.V(3).Infof("ai PreScore as.aiClient.Do wdkapp.ppdapi.com error: %v", err)
-//		return int64(0), nil
-//	}
-//	defer resp.Body.Close()
-//	if resp.StatusCode != 200 {
-//		klog.V(3).Infof("ai PreScore lresp.StatusCode != 200 ")
-//		return int64(0), nil
-//	}
-//	var result InstanceAllocationResp
-//	err = json.NewDecoder(resp.Body).Decode(&result)
-//	if err != nil {
-//		klog.V(3).Infof("ai PreScore json.NewDecoder : %v", err)
-//		return int64(0), nil
-//	}
-//	if result.Code != 100000 {
-//		klog.V(3).Infof("ai PreScore as.aiClient.Do result.Code != 100000")
-//		return int64(0), nil
-//	}
-//	klog.V(3).Infof("ai PreScore result : %v", result)
-//
-//	if len(result.Data.NodeScores) <= 0 {
-//		klog.V(3).Infof("ai PreScore len(result.Data.NodeScores) <= 0 ")
-//		return int64(0), nil
-//	}
-//	return int64(result.Data.NodeScores[0].Score), nil
-//}
-//
-//// ScoreExtensions of the Score plugin.
-//func (as CommunicatingPlugin) ScoreExtensions() framework.ScoreExtensions {
-//	klog.V(3).Infof("ai ScoreExtensions")
-//	return nil
-//}
+func (cp CommunicatingPlugin) Score(ctx context.Context, cycleState *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
+	nodeInfo, err := cp.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)
+	if err != nil || nodeInfo.Node() == nil {
+		return 0, framework.NewStatus(framework.Error, fmt.Sprintf("getting node %q from Snapshot: %v, node is nil: %v", nodeName, err, nodeInfo.Node() == nil))
+	}
+	//
+	//podLabels := pod.Labels
+	//if podLabels == nil {
+	//	podLabels = map[string]string{}
+	//}
+	//aiScheduler := podLabels["aiScheduler"]
+	//if aiScheduler != "aiScheduler" {
+	//	klog.V(1).Infof("ai PreScore isnot aiScheduler")
+	//	return int64(0), nil
+	//}
+	score, err := getAiPreScoreState(cycleState, nodeName)
+	if err != nil {
+		klog.V(3).Infof("ai Score error : %v", err)
+		return int64(0), nil
+	}
+	klog.V(3).Infof("ai Score: %v", score)
+	return score, nil
+}
+
+func getAiPreScoreState(cycleState *framework.CycleState, nodeName string) (int64, error) {
+	c, err := cycleState.Read(preScoreStateKey)
+	if err != nil {
+		return int64(0), fmt.Errorf("Error reading %q from cycleState: %v", preScoreStateKey, err)
+	}
+
+	s, ok := c.(*aiPreScoreState)
+	if !ok {
+		return int64(0), fmt.Errorf("%+v  convert to interpodaffinity.preScoreState error", c)
+	}
+	return s.aiScore[nodeName], nil
+}
+
+// preScoreState computed at PreScore and used at Score.
+type aiPreScoreState struct {
+	aiScore map[string]int64
+}
+
+func (s *aiPreScoreState) Clone() framework.StateData {
+	return s
+}
+
+// ScoreExtensions of the Score plugin.
+func (as CommunicatingPlugin) ScoreExtensions() framework.ScoreExtensions {
+	klog.V(3).Infof("ai ScoreExtensions")
+	return nil
+}
 
 // New initializes a new plugin and returns it.
 func New(configuration *runtime.Unknown, f framework.FrameworkHandle) (framework.Plugin, error) {
@@ -238,77 +205,13 @@ type InstanceAllocationResp struct {
 	Data    InstanceAllocationData `json:"data"`
 }
 
-//type stateData struct {
-//	data InstanceAllocationResp
-//}
+type stateData struct {
+	data InstanceAllocationResp
+}
 
-//func (s *stateData) Clone() framework.StateData {
-//	copy := &stateData{
-//		data: s.data,
-//	}
-//	return copy
-//}
-
-//
-//// PreScore builds and writes cycle state used by Score and NormalizeScore.
-//func (as *AiSchedulerPlugin) PreScore(ctx context.Context, cycleState *framework.CycleState, pod *v1.Pod, nodes []*v1.Node) *framework.Status {
-//	if len(nodes) == 0 {
-//		// No nodes to score.
-//		return nil
-//	}
-//
-//	podLabels := pod.Labels
-//	if podLabels == nil {
-//		podLabels = map[string]string{}
-//	}
-//	//aiScheduler := podLabels["aiScheduler"]
-//	//if aiScheduler != "aiScheduler" {
-//	//	klog.V(1).Infof("ai PreScore isnot aiScheduler")
-//	//	return nil
-//	//}
-//	var instanceInfo InstanceInfo
-//	instanceInfo.App = pod.Labels["app"]
-//	instanceInfo.AppId = pod.Labels["appid"]
-//	instanceInfo.Env = pod.Labels["env"]
-//	instanceInfo.Ip = pod.Labels["ip"]
-//
-//	nodeNames := make([]string, len(nodes))
-//	for i, node := range nodes {
-//		nodeNames[i] = node.Name
-//	}
-//	instanceInfo.NodeIp = nodeNames
-//
-//	var instanceAllocationRequest InstanceAllocationRequest
-//	instanceAllocationRequest.Env = "TEST"
-//	instanceAllocationRequest.Ins_info = instanceInfo
-//	instanceAllocationRequestJson, _ := json.Marshal(instanceAllocationRequest)
-//
-//	request, err := http.NewRequest("POST", "http://fat-wdkapp.ppdapi.com/instance_allocation_online", strings.NewReader(string(instanceAllocationRequestJson)))
-//	if err != nil {
-//		klog.V(3).Infof("ai PreScore http.NewRequest: %v", err)
-//		return nil
-//	}
-//	request.Header.Set("Content-Type", "application/json")
-//	resp, err := as.aiClient.Do(request)
-//	if err != nil {
-//		klog.V(3).Infof("ai PreScore as.aiClient.Do wdkapp.ppdapi.com error: %v", err)
-//		return nil
-//	}
-//	defer resp.Body.Close()
-//	if resp.StatusCode != 100000 {
-//		return nil
-//	}
-//	var result InstanceAllocationResp
-//	err = json.NewDecoder(resp.Body).Decode(&result)
-//	if err != nil {
-//		klog.V(3).Infof("ai PreScore json.NewDecoder : %v", err)
-//		return nil
-//	}
-//	if result.Code != 100000 {
-//		klog.V(3).Infof("ai PreScore as.aiClient.Do result.Code != 100000 : %v", err)
-//		return nil
-//	}
-//	klog.V(1).Infof("ai PreScore result : %v", result)
-//	cycleState.Write(preScoreStateKey, &stateData{data: result})
-//	return nil
-//}
+func (s *stateData) Clone() framework.StateData {
+	copy := &stateData{
+		data: s.data,
+	}
+	return copy
+}
