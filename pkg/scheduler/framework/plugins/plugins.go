@@ -181,7 +181,7 @@ type CommunicatingPlugin struct {
 }
 
 type Args struct {
-	AiUrl string `json:"ai_url,omitempty"`
+	AiUrl string `json:"aiUrl,omitempty"`
 }
 
 // preScoreState computed at PreScore and used at Score.
