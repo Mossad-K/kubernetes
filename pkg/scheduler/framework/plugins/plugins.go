@@ -59,7 +59,7 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	instanceAllocationRequest.Ins_info = instanceInfo
 	instanceAllocationRequestJson, _ := json.Marshal(instanceAllocationRequest)
 
-	request, err := http.NewRequest("POST", "http://fat-wdkapp.ppdapi.com/instance_allocation_online", strings.NewReader(string(instanceAllocationRequestJson)))
+	request, err := http.NewRequest("POST", cp.args.AiUrl, strings.NewReader(string(instanceAllocationRequestJson)))
 	if err != nil {
 		klog.V(3).Infof("ai PreScore http.NewRequest: %v", err)
 		return nil
@@ -181,9 +181,7 @@ type CommunicatingPlugin struct {
 }
 
 type Args struct {
-	FavoriteColor  string `json:"favorite_color,omitempty"`
-	FavoriteNumber int    `json:"favorite_number,omitempty"`
-	ThanksTo       string `json:"thanks_to,omitempty"`
+	AiUrl string `json:"ai_url,omitempty"`
 }
 
 // preScoreState computed at PreScore and used at Score.
