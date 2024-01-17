@@ -93,7 +93,17 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 		klog.V(3).Infof("ai PreScore len(result.Data.NodeScores) <= 0 ")
 		return nil
 	}
-	cycleState.Write(preScoreStateKey, &stateData{data: result})
+
+	aiScore := make(map[string]int64)
+
+	for _, nodeScore := range result.Data.NodeScores {
+		aiScore[nodeScore.Ip] = int64(nodeScore.Score)
+	}
+	klog.V(3).Infof("ai PreScore cycleState.Write : %v", aiScore)
+	aiPreScoreState := &AiPreScoreState{
+		aiScore: aiScore,
+	}
+	cycleState.Write(preScoreStateKey, aiPreScoreState)
 	return nil
 }
 
@@ -128,19 +138,14 @@ func getAiPreScoreState(cycleState *framework.CycleState, nodeName string) (int6
 		return int64(0), fmt.Errorf("Error reading %q from cycleState: %v", preScoreStateKey, err)
 	}
 
-	s, ok := c.(*aiPreScoreState)
+	aiPreScoreState, ok := c.(*AiPreScoreState)
 	if !ok {
 		return int64(0), fmt.Errorf("%+v  convert to interpodaffinity.preScoreState error", c)
 	}
-	return s.aiScore[nodeName], nil
+	return aiPreScoreState.aiScore[nodeName], nil
 }
 
-// preScoreState computed at PreScore and used at Score.
-type aiPreScoreState struct {
-	aiScore map[string]int64
-}
-
-func (s *aiPreScoreState) Clone() framework.StateData {
+func (s *AiPreScoreState) Clone() framework.StateData {
 	return s
 }
 
@@ -174,6 +179,11 @@ type Args struct {
 	ThanksTo       string `json:"thanks_to,omitempty"`
 }
 
+// preScoreState computed at PreScore and used at Score.
+type AiPreScoreState struct {
+	aiScore map[string]int64
+}
+
 type InstanceInfo struct {
 	Env    string   `json:"env"`
 	App    string   `json:"app"`
@@ -203,15 +213,4 @@ type InstanceAllocationResp struct {
 	Code    int                    `json:"code"`
 	Message string                 `json:"message"`
 	Data    InstanceAllocationData `json:"data"`
-}
-
-type stateData struct {
-	data InstanceAllocationResp
-}
-
-func (s *stateData) Clone() framework.StateData {
-	copy := &stateData{
-		data: s.data,
-	}
-	return copy
 }
