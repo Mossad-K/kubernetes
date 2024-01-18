@@ -521,7 +521,7 @@ func operationPod(insIp string, hostIp string, operation string) {
 	allocationInfo.HostIp = hostIp
 	var instanceFeedbackRequest InstanceFeedbackRequest
 	allocationInfos := make([]AllocationInfo, 1)
-	allocationInfos[1] = allocationInfo
+	allocationInfos[0] = allocationInfo
 	instanceFeedbackRequest.AllocationInfo = allocationInfos
 	InstanceFeedbackRequestJson, _ := json.Marshal(instanceFeedbackRequest)
 
