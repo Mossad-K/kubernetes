@@ -533,7 +533,7 @@ func operationPod(insIp string, hostIp string, operation string) {
 	client := http.DefaultClient
 	klog.V(3).Infof("operationPod  fat-wdkapp.ppdapi.com insIp: %v hostIp: %v operation: %v", insIp, hostIp, operation)
 	resp, err := client.Do(request)
-	klog.V(3).Infof("operationPod  done fat-wdkapp.ppdapi.com app: %v appId: %v env: %v", insIp, hostIp, operation)
+	klog.V(3).Infof("operationPod  done fat-wdkapp.ppdapi.com app: %v appId: %v operation: %v", insIp, hostIp, operation)
 	if err != nil {
 		klog.V(3).Infof("operationPod as.aiClient.Do fat-wdkapp.ppdapi.com error: %v", err)
 	}
@@ -542,6 +542,25 @@ func operationPod(insIp string, hostIp string, operation string) {
 		klog.V(3).Infof("operationPod lresp.StatusCode != 200 ")
 	}
 	klog.V(3).Infof("operationPod as.aiClient.Dofat-wdkapp.ppdapi.com body: %v", resp.Body)
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		klog.V(3).Infof("operationPod lresp.StatusCode != 200 ")
+	}
+	var instanceFeedbackResp InstanceFeedbackResp
+	err = json.NewDecoder(resp.Body).Decode(&instanceFeedbackResp)
+	if err != nil {
+		klog.V(3).Infof("operationPod json.NewDecoder(resp.Body).Decode(&instanceFeedbackResp) error: %v", err)
+	}
+	klog.V(3).Infof("operationPod as.aiClient.Dofat-wdkapp.ppdapi.com body: %v", instanceFeedbackResp)
+}
+
+type InstanceFeedbackResp struct {
+	Code    int       `json:"code"`
+	Message string    `json:"message"`
+	Data    StateData `json:"data"`
+}
+type StateData struct {
+	Data string `json:"data"`
 }
 
 type InstanceFeedbackRequest struct {

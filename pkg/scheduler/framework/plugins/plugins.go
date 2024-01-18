@@ -59,7 +59,7 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	instanceAllocationRequest.Ins_info = instanceInfo
 	instanceAllocationRequestJson, _ := json.Marshal(instanceAllocationRequest)
 
-	request, err := http.NewRequest("POST", cp.args.AiUrl, strings.NewReader(string(instanceAllocationRequestJson)))
+	request, err := http.NewRequest("POST", "http://fat-wdkapp.ppdapi.com/instance_allocation_online", strings.NewReader(string(instanceAllocationRequestJson)))
 	if err != nil {
 		klog.V(3).Infof("ai PreScore http.NewRequest: %v", err)
 		return nil
