@@ -560,7 +560,7 @@ type InstanceFeedbackResp struct {
 	Data    StateData `json:"data"`
 }
 type StateData struct {
-	Data string `json:"data"`
+	CurrentEnv string `json:"current_env"`
 }
 
 type InstanceFeedbackRequest struct {
