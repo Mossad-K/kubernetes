@@ -17,11 +17,8 @@ limitations under the License.
 package scheduler
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
-	"strings"
 
 	"k8s.io/klog"
 
@@ -206,7 +203,6 @@ func (sched *Scheduler) deletePodFromSchedulingQueue(obj interface{}) {
 		return
 	}
 	klog.V(3).Infof("delete event for unscheduled pod %s/%s", pod.Namespace, pod.Name)
-	operationPod(pod.Labels["ip"], pod.Spec.NodeName, "delete")
 	if err := sched.SchedulingQueue.Delete(pod); err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to dequeue %T: %v", obj, err))
 	}
@@ -231,7 +227,7 @@ func (sched *Scheduler) addPodToCache(obj interface{}) {
 		return
 	}
 	klog.V(3).Infof("add event for scheduled pod %s/%s ", pod.Namespace, pod.Name)
-	operationPod(pod.Labels["ip"], pod.Spec.NodeName, "insert")
+
 	if err := sched.SchedulerCache.AddPod(pod); err != nil {
 		klog.Errorf("scheduler cache AddPod failed: %v", err)
 	}
@@ -512,62 +508,4 @@ func nodeConditionsChanged(newNode *v1.Node, oldNode *v1.Node) bool {
 
 func nodeSpecUnschedulableChanged(newNode *v1.Node, oldNode *v1.Node) bool {
 	return newNode.Spec.Unschedulable != oldNode.Spec.Unschedulable && newNode.Spec.Unschedulable == false
-}
-
-func operationPod(insIp string, hostIp string, operation string) {
-	var allocationInfo AllocationInfo
-	allocationInfo.InsIp = insIp
-	allocationInfo.Operation = operation
-	allocationInfo.HostIp = hostIp
-	var instanceFeedbackRequest InstanceFeedbackRequest
-	allocationInfos := make([]AllocationInfo, 1)
-	allocationInfos[0] = allocationInfo
-	instanceFeedbackRequest.AllocationInfo = allocationInfos
-	InstanceFeedbackRequestJson, _ := json.Marshal(instanceFeedbackRequest)
-
-	request, err := http.NewRequest("POST", "http://fat-wdkapp.ppdapi.com/instance_allocation_feedback", strings.NewReader(string(InstanceFeedbackRequestJson)))
-	if err != nil {
-		klog.V(3).Infof("operationPod http.NewRequest: %v", err)
-	}
-	request.Header.Set("Content-Type", "application/json")
-	client := http.DefaultClient
-	klog.V(3).Infof("operationPod  fat-wdkapp.ppdapi.com insIp: %v hostIp: %v operation: %v", insIp, hostIp, operation)
-	resp, err := client.Do(request)
-	klog.V(3).Infof("operationPod  done fat-wdkapp.ppdapi.com app: %v appId: %v operation: %v", insIp, hostIp, operation)
-	if err != nil {
-		klog.V(3).Infof("operationPod as.aiClient.Do fat-wdkapp.ppdapi.com error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		klog.V(3).Infof("operationPod lresp.StatusCode != 200 ")
-	}
-	klog.V(3).Infof("operationPod as.aiClient.Dofat-wdkapp.ppdapi.com body: %v", resp.Body)
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		klog.V(3).Infof("operationPod lresp.StatusCode != 200 ")
-	}
-	var instanceFeedbackResp InstanceFeedbackResp
-	err = json.NewDecoder(resp.Body).Decode(&instanceFeedbackResp)
-	if err != nil {
-		klog.V(3).Infof("operationPod json.NewDecoder(resp.Body).Decode(&instanceFeedbackResp) error: %v", err)
-	}
-	klog.V(3).Infof("operationPod as.aiClient.Dofat-wdkapp.ppdapi.com body: %v", instanceFeedbackResp)
-}
-
-type InstanceFeedbackResp struct {
-	Code    int       `json:"code"`
-	Message string    `json:"message"`
-	Data    StateData `json:"data"`
-}
-type StateData struct {
-	CurrentEnv string `json:"current_env"`
-}
-
-type InstanceFeedbackRequest struct {
-	AllocationInfo []AllocationInfo `json:"allocation_info"`
-}
-type AllocationInfo struct {
-	InsIp     string `json:"ins_ip"`
-	Operation string `json:"operation"`
-	HostIp    string `json:"host_ip"`
 }
