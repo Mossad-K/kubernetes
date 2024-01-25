@@ -135,6 +135,10 @@ func (cp CommunicatingPlugin) Score(ctx context.Context, cycleState *framework.C
 		klog.V(3).Infof("ai Score error : %v", err)
 		return int64(0), nil
 	}
+	if score < 0 || score > 100 {
+		klog.V(3).Infof("ai Score error app %v appId: %v env: %v ip: %v nodeIp: %v Score: %v", app, appId, env, ip, nodeName, score)
+		return int64(0), nil
+	}
 	klog.V(3).Infof("ai app: %v appId: %v env: %v ip: %v nodeIp: %v Score: %v", app, appId, env, ip, nodeName, score)
 	return score, nil
 }
