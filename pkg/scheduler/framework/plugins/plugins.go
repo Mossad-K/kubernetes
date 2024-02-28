@@ -10,6 +10,7 @@ import (
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // StatelessPreBindExample is an example of a simple plugin that has no state
@@ -65,7 +66,9 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 		return nil
 	}
 	request.Header.Set("Content-Type", "application/json")
-	client := http.DefaultClient
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
 	klog.V(3).Infof("ai PreScore query fat-wdkapp.ppdapi.com app: %v appId: %v env: %v ip: %v", instanceInfo.App, instanceInfo.AppId, instanceInfo.Env, instanceInfo.Ip)
 	resp, err := client.Do(request)
 	klog.V(3).Infof("ai PreScore query done fat-wdkapp.ppdapi.com app: %v appId: %v env: %v ip: %v", instanceInfo.App, instanceInfo.AppId, instanceInfo.Env, instanceInfo.Ip)
@@ -186,6 +189,7 @@ type CommunicatingPlugin struct {
 
 type Args struct {
 	AiUrl string `json:"aiUrl,omitempty"`
+	AiEnv string `json:"aiEnv,omitempty"`
 }
 
 // preScoreState computed at PreScore and used at Score.
