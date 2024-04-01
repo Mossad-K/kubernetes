@@ -56,11 +56,11 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	}
 	instanceInfo.NodeIp = nodeNames
 	var instanceAllocationRequest InstanceAllocationRequest
-	instanceAllocationRequest.Env = "TEST"
+	instanceAllocationRequest.Env = cp.args.AiEnv
 	instanceAllocationRequest.Ins_info = instanceInfo
 	instanceAllocationRequestJson, _ := json.Marshal(instanceAllocationRequest)
 
-	request, err := http.NewRequest("POST", "http://fat-wdkapp.ppdapi.com/instance_allocation_online", strings.NewReader(string(instanceAllocationRequestJson)))
+	request, err := http.NewRequest("POST", cp.args.AiUrl, strings.NewReader(string(instanceAllocationRequestJson)))
 	if err != nil {
 		klog.V(3).Infof("ai PreScore http.NewRequest: %v", err)
 		return nil
@@ -171,8 +171,8 @@ func (as CommunicatingPlugin) ScoreExtensions() framework.ScoreExtensions {
 
 // New initializes a new plugin and returns it.
 func New(configuration *runtime.Unknown, f framework.FrameworkHandle) (framework.Plugin, error) {
-	args := &Args{}
-	if err := framework.DecodeInto(configuration, args); err != nil {
+	args := Args{}
+	if err := framework.DecodeInto(configuration, &args); err != nil {
 		return nil, err
 	}
 
@@ -183,7 +183,7 @@ func New(configuration *runtime.Unknown, f framework.FrameworkHandle) (framework
 }
 
 type CommunicatingPlugin struct {
-	args   *Args
+	args   Args
 	handle framework.FrameworkHandle
 }
 
