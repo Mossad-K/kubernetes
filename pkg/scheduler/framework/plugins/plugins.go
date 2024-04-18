@@ -37,11 +37,6 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	if podLabels == nil {
 		podLabels = map[string]string{}
 	}
-	//aiScheduler := podLabels["aiScheduler"]
-	//if aiScheduler != "aiScheduler" {
-	//	klog.V(1).Infof("ai PreScore isnot aiScheduler")
-	//	return nil
-	//}
 	var instanceInfo InstanceInfo
 	instanceInfo.App = pod.Labels["app"]
 	instanceInfo.AppId = pod.Labels["appid"]
@@ -118,16 +113,6 @@ func (cp CommunicatingPlugin) Score(ctx context.Context, cycleState *framework.C
 	if err != nil || nodeInfo.Node() == nil {
 		return 0, framework.NewStatus(framework.Error, fmt.Sprintf("getting node %q from Snapshot: %v, node is nil: %v", nodeName, err, nodeInfo.Node() == nil))
 	}
-	//
-	//podLabels := pod.Labels
-	//if podLabels == nil {
-	//	podLabels = map[string]string{}
-	//}
-	//aiScheduler := podLabels["aiScheduler"]
-	//if aiScheduler != "aiScheduler" {
-	//	klog.V(1).Infof("ai PreScore isnot aiScheduler")
-	//	return int64(0), nil
-	//}
 
 	app := pod.Labels["app"]
 	appId := pod.Labels["appid"]
@@ -143,7 +128,7 @@ func (cp CommunicatingPlugin) Score(ctx context.Context, cycleState *framework.C
 		return int64(0), nil
 	}
 	klog.V(3).Infof("ai app: %v appId: %v env: %v ip: %v nodeIp: %v Score: %v", app, appId, env, ip, nodeName, score)
-	return score, nil
+	return int64(0), nil
 }
 
 func getAiPreScoreState(cycleState *framework.CycleState, nodeName string) (int64, error) {
