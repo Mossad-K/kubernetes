@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
@@ -57,7 +58,7 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 
 	request, err := http.NewRequest("POST", cp.args.AiUrl, strings.NewReader(string(instanceAllocationRequestJson)))
 	if err != nil {
-		klog.V(3).Infof("ai PreScore http.NewRequest: %v", err)
+		klog.V(3).Infof("ai PreScore http.NewRequest: %v error: %v", request, err)
 		return nil
 	}
 	request.Header.Set("Content-Type", "application/json")
@@ -68,28 +69,33 @@ func (cp CommunicatingPlugin) PreScore(ctx context.Context, cycleState *framewor
 	resp, err := client.Do(request)
 	klog.V(3).Infof("ai PreScore query done fat-wdkapp.ppdapi.com app: %v appId: %v env: %v ip: %v", instanceInfo.App, instanceInfo.AppId, instanceInfo.Env, instanceInfo.Ip)
 	if err != nil {
-		klog.V(3).Infof("ai PreScore as.aiClient.Do wdkapp.ppdapi.com error: %v", err)
+		klog.V(3).Infof("ai PreScore as.aiClient.Do wdkapp.ppdapi.com resp: %v error: %v", resp, err)
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			klog.V(3).Infof("ai PreScore Body.Close err: %v", err)
+		}
+	}(resp.Body)
 	if resp.StatusCode != 200 {
-		klog.V(3).Infof("ai PreScore lresp.StatusCode != 200 ")
+		klog.V(3).Infof("ai PreScore lresp.StatusCode != 200 resp: %v", resp)
 		return nil
 	}
 	var result InstanceAllocationResp
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		klog.V(3).Infof("ai PreScore json.NewDecoder : %v", err)
+		klog.V(3).Infof("ai PreScore json.NewDecoder result: %v err: %v", result, err)
 		return nil
 	}
 	if result.Code != 100000 {
-		klog.V(3).Infof("ai PreScore as.aiClient.Do result.Code != 100000")
+		klog.V(3).Infof("ai PreScore as.aiClient.Do result.Code != 100000 result: %v", result)
 		return nil
 	}
 	klog.V(3).Infof("ai PreScore result : %v", result)
 
 	if len(result.Data.NodeScores) <= 0 {
-		klog.V(3).Infof("ai PreScore len(result.Data.NodeScores) <= 0 ")
+		klog.V(3).Infof("ai PreScore len(result.Data.NodeScores) <= 0 result: %v", result)
 		return nil
 	}
 
@@ -120,7 +126,7 @@ func (cp CommunicatingPlugin) Score(ctx context.Context, cycleState *framework.C
 	ip := pod.Labels["ip"]
 	score, err := getAiPreScoreState(cycleState, nodeName)
 	if err != nil {
-		klog.V(3).Infof("ai Score error : %v", err)
+		klog.V(3).Infof("ai Score app %v appId: %v env: %v ip: %v nodeIp: %v err: %v", app, appId, env, ip, nodeName, err)
 		return int64(0), nil
 	}
 	if score < 0 || score > 100 {
